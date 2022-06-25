@@ -2,13 +2,7 @@ package me.toomuchzelda.teamarenapaper.teamarena.kits;
 
 import java.util.*;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Color;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.Particle.DustOptions;
 import org.bukkit.Particle.DustTransition;
 import org.bukkit.attribute.Attribute;
@@ -30,6 +24,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 import me.toomuchzelda.teamarenapaper.Main;
@@ -303,25 +298,29 @@ public class KitValkyrie extends Kit{
             while(iter.hasNext()){
                 Entity entity = iter.next();
                 if (entity instanceof LivingEntity victim && !victim.getType().equals(EntityType.ARMOR_STAND)){
-                    double distance = victim.getLocation().distance(loc);
-                    ACTIVE_AXE.add(player);
+					Vector attackerToVictim = victim.getEyeLocation().subtract(player.getEyeLocation()).toVector().normalize();
 
-                    //If distance is < 1, it is a "sour hit" and no bonus damage is given
-                    if(distance < 1){
+					RayTraceResult rayTrace = player.getWorld().rayTraceBlocks(
+							player.getEyeLocation(), attackerToVictim, ATTACK_RADIUS,
+							FluidCollisionMode.NEVER, true);
+					if(rayTrace == null){
+						double distance = victim.getLocation().distance(loc);
+						ACTIVE_AXE.add(player);
 
-                    }
-                    else if(distance >= 1 && distance < 3){
-                        meta.addEnchant(Enchantment.DAMAGE_ALL, AXE_SHARP + NORMAL_BONUS, true);
-                    }
-                    else{
-                        meta.addEnchant(Enchantment.DAMAGE_ALL, AXE_SHARP + SWEET_SPOT_BONUS, true);
-                        player.playSound(player, Sound.BLOCK_GRINDSTONE_USE, 1.0f, 1.9f);
-                    }
-                    item.setItemMeta(meta);
-                    player.attack(victim);
-                    item.addEnchantment(Enchantment.DAMAGE_ALL, AXE_SHARP);
+						//If distance is < 1, it is a "sour hit" and no bonus damage is given
+						if (distance < 1) {
 
-                }
+						} else if (distance >= 1 && distance < 3) {
+							meta.addEnchant(Enchantment.DAMAGE_ALL, AXE_SHARP + NORMAL_BONUS, true);
+						} else {
+							meta.addEnchant(Enchantment.DAMAGE_ALL, AXE_SHARP + SWEET_SPOT_BONUS, true);
+							player.playSound(player, Sound.BLOCK_GRINDSTONE_USE, 1.0f, 1.9f);
+						}
+						item.setItemMeta(meta);
+						player.attack(victim);
+						item.addEnchantment(Enchantment.DAMAGE_ALL, AXE_SHARP);
+					}
+				}
                 iter.remove();
             }
             axeParticles(player);
