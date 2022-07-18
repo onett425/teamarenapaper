@@ -24,7 +24,6 @@ import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.Event;
@@ -279,7 +278,7 @@ public class KitDemolitions extends Kit
 
 		@Override
 		public void onAttemptedAttack(DamageEvent event) {
-			if(event.getDamageType().is(DamageType.EXPLOSION) && event.getAttacker() instanceof TNTPrimed dTnt) {
+			if(event.getDamageType().is(DamageType.DEMO_TNTMINE) && event.getAttacker() instanceof TNTPrimed dTnt) {
 				Player demo = (Player) event.getFinalAttacker();
 				if(event.getVictim() instanceof Player victim) {
 					TNTMine mine = TNTMine.getByTNT(demo, dTnt);

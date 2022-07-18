@@ -23,6 +23,7 @@ import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.craftbukkit.v1_19_R1.CraftWorld;
 import org.bukkit.entity.*;
 import org.bukkit.event.Event;
 import org.bukkit.event.block.Action;
@@ -44,7 +45,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 //main game class
 public abstract class TeamArena
@@ -205,6 +205,9 @@ public abstract class TeamArena
 		else
 			gameWorld.setClearWeatherDuration(6000); //5 minutes
 
+		//force disable relative projectile velocity (projectiles inheriting the velocity of their shooter)
+		((CraftWorld) gameWorld).getHandle().paperConfig().misc.disableRelativeProjectileVelocity = true;
+
 		waitingSince = gameTick;
 		//gameState = GameState.PREGAME;
 		setGameState(GameState.PREGAME);
@@ -223,8 +226,8 @@ public abstract class TeamArena
 			tabTeamsList.add(team.getSimpleName());
 		}
 
-		players = ConcurrentHashMap.newKeySet();
-		spectators = ConcurrentHashMap.newKeySet();
+		players = new LinkedHashSet<>();
+		spectators = new LinkedHashSet<>();
 		respawnTimers = new LinkedHashMap<>();
 		damageQueue = new LinkedList<>();
 
@@ -235,6 +238,7 @@ public abstract class TeamArena
 		DamageTimes.clear();
 
 		//init all the players online at time of construction
+		Kit fallbackKit = CommandDebug.filterKit(kits.values().iterator().next());
 		for (var entry : Main.getPlayerInfoMap().entrySet()) {
 			Player p = entry.getKey();
 			PlayerInfo pinfo = entry.getValue();
@@ -251,7 +255,7 @@ public abstract class TeamArena
 			noTeamTeam.addMembers(p);
 
 			if(pinfo.kit == null)
-				pinfo.kit = kits.values().iterator().next();
+				pinfo.kit = fallbackKit;
 
 			PlayerUtils.resetState(p);
 			p.setAllowFlight(true);
@@ -621,13 +625,14 @@ public abstract class TeamArena
 					Location spawnLoc = p.getLocation();
 					spawnLoc.add(0, MathUtils.randomRange(1.4, 2), 0);
 					DamageIndicatorHologram hologram = new DamageIndicatorHologram(spawnLoc, PlayerUtils.getDamageIndicatorViewers(p, playerCause), damageText);
-					//activeDamageIndicators.add(hologram);
 
 					//add to their damage log
-					pinfo.logDamageReceived(p, event.getDamageType(), event.getFinalDamage(), event.getFinalAttacker(), gameTick);
+					if(event.getFinalDamage() > 0) {
+						pinfo.logDamageReceived(p, event.getDamageType(), event.getFinalDamage(), event.getFinalAttacker(), gameTick);
 
-					if (event.getFinalAttacker() instanceof Player attacker) {
-						pinfo.getKillAssistTracker().addDamage(attacker, event.getFinalDamage());
+						if (event.getFinalAttacker() instanceof Player attacker) {
+							pinfo.getKillAssistTracker().addDamage(attacker, event.getFinalDamage());
+						}
 					}
 				}
 			}
@@ -1411,11 +1416,11 @@ public abstract class TeamArena
 			playerInfo.team = spectatorTeam;
 		}
 
-		if(playerInfo.kit == null) {
-			playerInfo.kit = findKit(playerInfo.defaultKit);
+		if (playerInfo.kit == null) {
+			playerInfo.kit = CommandDebug.filterKit(findKit(playerInfo.defaultKit));
 			//default kit somehow invalid; maybe a kit was removed
-			if(playerInfo.kit == null) {
-				playerInfo.kit = kits.values().iterator().next();
+			if (playerInfo.kit == null) {
+				playerInfo.kit = CommandDebug.filterKit(kits.values().iterator().next());
 			}
 		}
 
